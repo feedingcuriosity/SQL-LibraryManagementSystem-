@@ -1,12 +1,56 @@
 CREATE DATABASE LibraryManagementSystem
+GO
 
--- 1 -- LIBRARY BRANCH TABLE
+USE LibraryManagementSystem
+GO
+
+
+--CREATE STATEMENTS--
 CREATE TABLE LIBRARY_BRANCH (
 	BranchID INT PRIMARY KEY NOT NULL IDENTITY (1,1),
 	BranchName nvarchar(50) NOT NULL,
 	Address nvarchar(50)
 );
 
+CREATE TABLE BOOKS (
+	BookID INT PRIMARY KEY NOT NULL IDENTITY (1,1),
+	Title nvarchar(500) NOT NULL,
+	PublisherName nvarchar(500)
+);
+
+CREATE TABLE PUBLISHER (
+	PublisherName nvarchar(100) PRIMARY KEY
+);
+
+CREATE TABLE BOOK_AUTHORS (
+	BookID INT,
+	AuthorName nvarchar(100)
+);
+
+CREATE TABLE BOOK_COPIES (
+	BookID INT,
+	BranchID INT,
+	Number_Of_Copies INT
+);
+
+CREATE TABLE BORROWER (
+	CardNo INT PRIMARY KEY NOT NULL IDENTITY(1, 1),
+	Name nvarchar(50),
+	Address nvarchar(50),
+	Phone varchar(50),
+);
+
+CREATE TABLE BOOK_LOANS (
+	BookID INT NOT NULL,
+	BranchID INT NOT NULL,
+	CardNo INT NOT NULL,
+	DateOut DATE NOT NULL,
+	DateDue AS DATEADD(day,21,DateOut),
+);
+
+GO
+
+--INSERT STATEMENTS--
 INSERT INTO LIBRARY_BRANCH
 	(BranchName)
 	VALUES
@@ -16,13 +60,6 @@ INSERT INTO LIBRARY_BRANCH
 	('Wedgewood')
 ;
 
--- 2 -- BOOKS TABLE
-CREATE TABLE BOOKS (
-	BookID INT PRIMARY KEY NOT NULL IDENTITY (1,1),
-	Title nvarchar(500) NOT NULL,
-	PublisherName nvarchar(500)
-);
-
 INSERT INTO BOOKS
 	(Title, PublisherName)
 	VALUES
@@ -30,7 +67,7 @@ INSERT INTO BOOKS
 	('Where the Crawdads Sing', 'G.P. Putnams Sons'),
 	('The Chef', 'Little, Brown and Company'),
 	('Never Tell', 'Harper Paperbacks'),
-	('Devils Daughter', 'Avon'), --Wasn't able to keep "'"
+	('Devils Daughter', 'Avon'),
 	('Mission Critical', 'Berkley'), 
 	('The Silent Patient', 'Celadon Books'),
 	('Black Leopard, Red Wolf', 'Riverhead Books'),
@@ -45,22 +82,11 @@ INSERT INTO BOOKS
 	('White Fragility', 'Beacon Press'),
 	('Killers of the Flower Moon',' Doubleday'), 
 	('The Body Keeps the Score', 'Penguin Books'),
-	('Life-Changing Magic: A Journal - Spark Joy Every Day', 'Ten Speed Press')
-;
-
-INSERT INTO BOOKS
-	(Title, PublisherName)
-	VALUES
+	('Life-Changing Magic: A Journal - Spark Joy Every Day', 'Ten Speed Press'),
 	('IT', 'Scribner'),
 	('The Shining', 'Anchor')
 ;
 
--- 3 -- PUBLISHER TABLE 
-
-CREATE TABLE PUBLISHER (
-	PublisherName nvarchar(100) PRIMARY KEY
-);
-	--Add PublisherName from books table to prevent re-work
 INSERT INTO PUBLISHER
 	SELECT DISTINCT PublisherName
 	FROM BOOKS
@@ -71,14 +97,7 @@ ALTER TABLE PUBLISHER
 	Phone INT
 ;
 
--- 4 -- BOOK_AUTHORS TABLE
- 
-CREATE TABLE BOOK_AUTHORS (
-	BookID INT,
-	AuthorName nvarchar(100)
-);
-
-INSERT INTO BOOK_AUTHORS
+ INSERT INTO BOOK_AUTHORS
 	(BookID, AuthorName)
 	VALUES
 	(1, 'Edward Marriott'),
@@ -100,25 +119,11 @@ INSERT INTO BOOK_AUTHORS
 	(17, 'Robin DiAngelo'),
 	(18, 'David Grann'),
 	(19, 'Bessel van der Kolk'),
-	(20, 'Marie Kondo')
-;
-
-INSERT INTO BOOK_AUTHORS
-	(BookID, AuthorName)
-	VALUES
+	(20, 'Marie Kondo'),
 	(21, 'Stephen King'),
 	(22, 'Stephen King')
 ;
 
--- 5 -- BOOK_COPIES TABLE
-
-CREATE TABLE BOOK_COPIES (
-	BookID INT,
-	BranchID INT,
-	Number_Of_Copies INT
-);
-
-	--Assumed 2 copies of every book at each library branch
 INSERT INTO BOOK_COPIES
 	(BookID, BranchID, Number_Of_Copies)
 	VALUES
@@ -212,15 +217,6 @@ INSERT INTO BOOK_COPIES
 	(22, 4, 2)
 ;
 
-
--- 6 -- BORROWER TABLE 
-CREATE TABLE BORROWER (
-	CardNo INT PRIMARY KEY NOT NULL IDENTITY(1, 1),
-	Name nvarchar(50),
-	Address nvarchar(50),
-	Phone varchar(50),
-);
-
 INSERT INTO BORROWER
 	(Name, Address, Phone)
 	VALUES
@@ -238,17 +234,6 @@ INSERT INTO BORROWER
 	('Bailee Anderson', '57 Nichols Lane Chelmsford, MA 01824', 9782071910),
 	('Mariah Frazier','3 Forest Lane Chelmsford, MA 01824', 9782043910)
 ;
-
-
--- 7 -- BOOK_LOANS TABLE 
-
-CREATE TABLE BOOK_LOANS (
-	BookID INT NOT NULL,
-	BranchID INT NOT NULL,
-	CardNo INT NOT NULL,
-	DateOut DATE NOT NULL,
-	DateDue AS DATEADD(day,21,DateOut),
-);
 
 INSERT INTO BOOK_LOANS
 	(BookID, BranchID, CardNo, DateOut)
@@ -304,15 +289,9 @@ INSERT INTO BOOK_LOANS
 	(2,1,4,'2019-02-7'),
 	(7,1,4,'2019-02-7')
 ;
+GO
 
-	--Check that more than 2 books are not check out/branch.*/
-SELECT* FROM BOOK_LOANS
-ORDER BY DateDue
-;
-
--- STORED PROCEDURES --
-
--- 1 -- How many copies of the book titled "The Lost Tribe" are owned by the library branch whose name is "Sharpstown"?
+--STORED PROCEDURES --
 USE LibraryManagementSystem
 GO
 CREATE PROCEDURE dbo.uspNumberOfCopiesOwned @Title nvarchar(30) = NULL, @BranchName nvarchar(30) = NULL
@@ -326,14 +305,6 @@ WHERE Title LIKE '%' + ISNULL (@Title, Title)
 AND BranchName LIKE '%' + ISNULL (@BranchName, BranchName)
 GO
 
-EXEC dbo.uspNumberOfCopiesOwned @Title = 'The Lost Tribe', @BranchName = 'Sharpstown'
-
--- 2 -- How many copies of the book titled "The Lost Tribe" are owned by each library branch?
-EXEC dbo.uspNumberOfCopiesOwned @Title = 'The Lost Tribe'
-
--- 3 -- Retrieve the names of all borrowers who do not have any books checked out.
-USE LibraryManagementSystem
-GO
 CREATE PROCEDURE dbo.uspBorrowersNoBooks
 AS
 SET NOCOUNT ON
@@ -343,11 +314,6 @@ FULL JOIN BORROWER ON BORROWER.CardNo = BOOK_LOANS.CardNo
 WHERE BOOK_LOANS.CardNo IS NULL
 GO
 
-EXEC dbo.uspBorrowersNoBooks
-
--- 4 -- For each book that is loaned out from the "Sharpstown" branch and whose DueDate is today, retrieve the book title, the borrower's name, and the borrowers address.
-USE LibraryManagementSystem
-GO
 CREATE PROCEDURE dbo.uspBooksDueTodayAtBranch @BranchName varchar(30) = NULL
 AS
 SET NOCOUNT ON
@@ -359,11 +325,6 @@ INNER JOIN BORROWER ON BORROWER.CardNo = BOOK_LOANS.CardNo
 WHERE BranchName = ISNULL(@BranchName,BranchName) AND DateDue = DATEADD(DAY, DATEDIFF(DAY,0,GETDATE()),0)
 GO
 
-EXEC dbo.uspBooksDueTodayAtBranch @BranchName='Sharpstown'
-
--- 5 -- For each library branch, retrieve the branch name and the total number of books loaned out from that branch.
-USE LibraryManagementSystem
-GO
 CREATE PROCEDURE dbo.uspNumberOfBooksLoanedAtBranch
 AS
 SET NOCOUNT ON
@@ -373,11 +334,6 @@ LEFT JOIN LIBRARY_BRANCH ON LIBRARY_BRANCH.BranchID = BOOK_LOANS.BranchID
 GROUP BY BranchName
 GO
 
-EXEC dbo.uspNumberOfBooksLoanedAtBranch
-
--- 6 -- Retrieve the names, addresses, and the number of books checked out for all borrowers who have more than five books checked out.
-USE LibraryManagementSystem
-GO
 CREATE PROCEDURE dbo.uspBorrowerWithMoreThanFiveBooks
 AS
 SET NOCOUNT ON
@@ -388,11 +344,6 @@ GROUP BY NAME, ADDRESS
 HAVING COUNT(Book_Loans.CardNo)> 5
 GO
 
-EXEC dbo.uspBorrowerWithMoreThanFiveBooks
-
--- 7 -- For each book authored by "Stephen King", retrieve the title and the number of copies owend by the library branch whose name is "Central".
-USE LibraryManagementSystem
-GO
 CREATE PROCEDURE dbo.BranchCopiesOwnedByAuthor @AuthorName varchar(30) = Null, @BranchName varchar(30) = Null
 AS
 SET NOCOUNT ON
@@ -404,4 +355,19 @@ INNER JOIN LIBRARY_BRANCH ON LIBRARY_BRANCH.BranchID = BOOK_COPIES.BranchID
 WHERE AuthorName = ISNULL(@AuthorName, AuthorName) AND BranchName = ISNULL(@BranchName, BranchName)
 GO
 
+--Execute Statements--
+-- 1 -- How many copies of the book titled "The Lost Tribe" are owned by the library branch whose name is "Sharpstown"?
+EXEC dbo.uspNumberOfCopiesOwned @Title = 'The Lost Tribe', @BranchName = 'Sharpstown'
+-- 2 -- How many copies of the book titled "The Lost Tribe" are owned by each library branch?
+EXEC dbo.uspNumberOfCopiesOwned @Title = 'The Lost Tribe'
+-- 3 -- Retrieve the names of all borrowers who do not have any books checked out.
+EXEC dbo.uspBorrowersNoBooks
+-- 4 -- For each book that is loaned out from the "Sharpstown" branch and whose DueDate is today, retrieve the book title, the borrower's name, and the borrowers address.
+EXEC dbo.uspBooksDueTodayAtBranch @BranchName='Sharpstown'
+-- 5 -- For each library branch, retrieve the branch name and the total number of books loaned out from that branch.
+EXEC dbo.uspNumberOfBooksLoanedAtBranch
+-- 6 -- Retrieve the names, addresses, and the number of books checked out for all borrowers who have more than five books checked out.
+EXEC dbo.uspBorrowerWithMoreThanFiveBooks
+-- 7 -- For each book authored by "Stephen King", retrieve the title and the number of copies owend by the library branch whose name is "Central".
 EXEC dbo.BranchCopiesOwnedByAuthor @AuthorName='Stephen King', @BranchName= 'Central'
+
